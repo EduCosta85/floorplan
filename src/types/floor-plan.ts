@@ -203,6 +203,10 @@ export interface Room {
   walls: Walls;
   /** Materials for floor, walls, ceiling */
   materials?: RoomMaterials;
+  /** Whether the room has a floor (default: true) */
+  hasFloor?: boolean;
+  /** Whether the room has a ceiling (default: true) */
+  hasCeiling?: boolean;
 }
 
 export interface Element {

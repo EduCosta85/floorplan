@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { Room } from '../../types/floor-plan';
 import { useFloorPlan } from '../../context/FloorPlanContext';
-import { Button, Input } from '../ui';
+import { Button, Input, Checkbox } from '../ui';
 
 interface RoomFormProps {
   room?: Room | null;
@@ -20,6 +20,8 @@ export function RoomForm({ room, onClose }: RoomFormProps) {
     y: 0,
     width: 300,
     height: 300,
+    hasFloor: true,
+    hasCeiling: true,
   });
 
   useEffect(() => {
@@ -33,6 +35,8 @@ export function RoomForm({ room, onClose }: RoomFormProps) {
         y: room.position.y,
         width,
         height,
+        hasFloor: room.hasFloor !== false,
+        hasCeiling: room.hasCeiling !== false,
       });
     } else {
       setFormData({
@@ -42,11 +46,13 @@ export function RoomForm({ room, onClose }: RoomFormProps) {
         y: 0,
         width: 300,
         height: 300,
+        hasFloor: true,
+        hasCeiling: true,
       });
     }
   }, [room, generateRoomId]);
 
-  const handleChange = (field: keyof typeof formData, value: string | number) => {
+  const handleChange = (field: keyof typeof formData, value: string | number | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -63,6 +69,8 @@ export function RoomForm({ room, onClose }: RoomFormProps) {
         south: { length: formData.width },
         west: { length: formData.height },
       },
+      hasFloor: formData.hasFloor,
+      hasCeiling: formData.hasCeiling,
     };
 
     if (isEditing) {
@@ -125,6 +133,25 @@ export function RoomForm({ room, onClose }: RoomFormProps) {
             suffix={unit}
           />
         </div>
+      </div>
+
+      <div className="form-section">
+        <h4 className="form-section__title">Estrutura (3D)</h4>
+        <div className="form-checkboxes">
+          <Checkbox
+            label="Tem piso"
+            checked={formData.hasFloor}
+            onChange={(e) => handleChange('hasFloor', e.target.checked)}
+          />
+          <Checkbox
+            label="Tem teto"
+            checked={formData.hasCeiling}
+            onChange={(e) => handleChange('hasCeiling', e.target.checked)}
+          />
+        </div>
+        <p className="form-hint">
+          Desmarque para áreas abertas como quintais, varandas ou terraços.
+        </p>
       </div>
 
       <div className="form-actions">

@@ -1,0 +1,138 @@
+{
+  "$schema": "../floor-plan.schema.json",
+  "version": "0.3",
+  "name": "Casa Rose - Executivo",
+  "unit": "cm",
+  "scale": 0.15,
+  "defaults": {
+    "wall": { "height": 280, "thickness": 15 },
+    "door": { "width": 80, "height": 210 },
+    "window": { "width": 120, "height": 120, "fromFloor": 100 }
+  },
+  "floor": {
+    "id": "terreo",
+    "name": "Térreo",
+    "rooms": [
+      {
+        "id": "quintal",
+        "name": "Quintal",
+        "position": { "x": 0, "y": 0 },
+        "walls": {
+          "north": { "length": 510, "exists": false },
+          "east": { "length": 530, "openings": [
+            { "type": "door", "offset": 200, "width": 100 }
+          ]},
+          "south": { "length": 510, "exists": false },
+          "west": { "length": 530, "exists": false }
+        },
+        "hasFloor": false,
+        "hasCeiling": false
+      },
+      {
+        "id": "cozinha",
+        "name": "Cozinha",
+        "position": { "x": 510, "y": 65 },
+        "walls": {
+          "north": { "length": 455, "openings": [
+            { "type": "window", "offset": 150, "width": 150 }
+          ]},
+          "east": { "length": 465, "openings": [
+            { "type": "door", "offset": 50, "width": 80 }
+          ]},
+          "south": { "length": 455 },
+          "west": { "length": 465, "openings": [
+            { "type": "door", "offset": 200, "width": 100 }
+          ]}
+        }
+      },
+      {
+        "id": "lavanderia",
+        "name": "Lavanderia",
+        "position": { "x": 965, "y": 65 },
+        "walls": {
+          "north": { "length": 145 },
+          "east": { "length": 360 },
+          "south": { "length": 145 },
+          "west": { "length": 360, "openings": [
+            { "type": "door", "offset": 50, "width": 80 }
+          ]}
+        }
+      },
+      {
+        "id": "lavabo",
+        "name": "Lavabo",
+        "position": { "x": 1110, "y": 65 },
+        "walls": {
+          "north": { "length": 200 },
+          "east": { "length": 200, "openings": [
+            { "type": "door", "offset": 60, "width": 70 }
+          ]},
+          "south": { "length": 200 },
+          "west": { "length": 200 }
+        }
+      },
+      {
+        "id": "circulacao",
+        "name": "Circulação",
+        "position": { "x": 1110, "y": 265 },
+        "walls": {
+          "north": { "length": 200 },
+          "east": { "length": 160, "openings": [
+            { "type": "door", "offset": 30, "width": 100 }
+          ]},
+          "south": { "length": 200 },
+          "west": { "length": 160 }
+        }
+      },
+      {
+        "id": "escada",
+        "name": "Escada",
+        "position": { "x": 965, "y": 425 },
+        "walls": {
+          "north": { "length": 145 },
+          "east": { "length": 105 },
+          "south": { "length": 145, "exists": false },
+          "west": { "length": 105 }
+        }
+      },
+      {
+        "id": "sala",
+        "name": "Sala",
+        "position": { "x": 1310, "y": 60 },
+        "walls": {
+          "north": { "length": 395, "openings": [
+            { "type": "window", "offset": 100, "width": 180 }
+          ]},
+          "east": { "length": 470, "openings": [
+            { "type": "door", "offset": 350, "width": 100 }
+          ]},
+          "south": { "length": 395, "openings": [
+            { "type": "door", "offset": 20, "width": 95 }
+          ]},
+          "west": { "length": 470, "openings": [
+            { "type": "door", "offset": 30, "width": 100 }
+          ]}
+        }
+      },
+      {
+        "id": "garagem",
+        "name": "Garagem",
+        "position": { "x": 1705, "y": 60 },
+        "walls": {
+          "north": { "length": 480, "openings": [
+            { "type": "window", "offset": 180, "width": 120 }
+          ]},
+          "east": { "length": 470, "openings": [
+            { "type": "door", "offset": 100, "width": 280, "height": 240 }
+          ]},
+          "south": { "length": 480 },
+          "west": { "length": 470, "openings": [
+            { "type": "door", "offset": 350, "width": 100 }
+          ]}
+        }
+      }
+    ],
+    "furniture": [],
+    "elements": []
+  }
+}

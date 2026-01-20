@@ -564,18 +564,20 @@ function RoomMesh({
       onPointerLeave={() => onHover?.(false)}
     >
       {/* Floor - key includes materialsKey to force re-render */}
-      <mesh 
-        key={`floor-${materialsKey}`}
-        position={[x + width / 2, 0.01, z + depth / 2]} 
-        rotation={[-Math.PI / 2, 0, 0]}
-        receiveShadow
-      >
-        <planeGeometry args={[width, depth]} />
-        <primitive object={floorMaterial} attach="material" />
-      </mesh>
+      {(room.hasFloor !== false) && (
+        <mesh 
+          key={`floor-${materialsKey}`}
+          position={[x + width / 2, 0.01, z + depth / 2]} 
+          rotation={[-Math.PI / 2, 0, 0]}
+          receiveShadow
+        >
+          <planeGeometry args={[width, depth]} />
+          <primitive object={floorMaterial} attach="material" />
+        </mesh>
+      )}
       
       {/* Ceiling - key includes materialsKey to force re-render */}
-      {showCeiling && (
+      {showCeiling && (room.hasCeiling !== false) && (
         <mesh 
           key={`ceiling-${materialsKey}`}
           position={[x + width / 2, height, z + depth / 2]} 

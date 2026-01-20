@@ -693,6 +693,19 @@ body {
   font-weight: 700;
 }
 
+.form-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-hint {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  line-height: 1.4;
+}
+
 /* Wall List Items - More compact */
 .walls-list {
   display: flex;
