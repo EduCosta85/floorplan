@@ -1,0 +1,195 @@
+{
+  "$schema": "../schemas/floor-plan.schema.json",
+  "version": "0.4",
+  "unit": "cm",
+  "scale": 0.2,
+
+  "defaults": {
+    "wall": {
+      "height": 280,
+      "thickness": 15
+    },
+    "door": {
+      "width": 80,
+      "height": 210
+    },
+    "window": {
+      "width": 120,
+      "height": 120,
+      "fromFloor": 100
+    }
+  },
+
+  "floor": {
+    "id": "terreo",
+    "name": "Térreo",
+
+    "rooms": [
+      {
+        "id": "sala",
+        "name": "Sala de Estar",
+        "position": { "x": 0, "y": 0 },
+        "walls": {
+          "north": { 
+            "length": 500,
+            "openings": [
+              { "type": "window", "offset": 50, "width": 200 },
+              { "type": "door", "offset": 400, "to": "external" }
+            ]
+          },
+          "east": { 
+            "length": 400,
+            "openings": [
+              { "type": "door", "offset": 50, "to": "quarto1" }
+            ]
+          },
+          "south": { 
+            "exists": false,
+            "length": 500
+          },
+          "west": { 
+            "length": 400,
+            "openings": [
+              { "type": "window", "offset": 100, "width": 150 }
+            ]
+          }
+        }
+      },
+      {
+        "id": "quarto1",
+        "name": "Quarto 1",
+        "position": { "x": 500, "y": 0 },
+        "walls": {
+          "north": { 
+            "length": 350,
+            "openings": [
+              { "type": "window", "offset": 100, "width": 150 }
+            ]
+          },
+          "east": { 
+            "length": 400,
+            "openings": [
+              { "type": "window", "offset": 100, "width": 150 }
+            ]
+          },
+          "south": { 
+            "length": 350
+          },
+          "west": { 
+            "exists": false,
+            "length": 400
+          }
+        }
+      },
+      {
+        "id": "cozinha",
+        "name": "Cozinha",
+        "position": { "x": 0, "y": 400 },
+        "walls": {
+          "north": { 
+            "exists": false,
+            "length": 300
+          },
+          "east": { 
+            "exists": false,
+            "length": 300
+          },
+          "south": { 
+            "length": 300,
+            "openings": [
+              { "type": "window", "offset": 90, "width": 120 }
+            ]
+          },
+          "west": { 
+            "length": 300,
+            "openings": [
+              { "type": "window", "offset": 80, "width": 100 }
+            ]
+          }
+        }
+      },
+      {
+        "id": "banheiro",
+        "name": "Banheiro",
+        "position": { "x": 300, "y": 400 },
+        "walls": {
+          "north": { 
+            "exists": false,
+            "length": 200
+          },
+          "east": { 
+            "length": 200,
+            "openings": [
+              { "type": "window", "offset": 60, "width": 60, "height": 60, "fromFloor": 160 }
+            ]
+          },
+          "south": { 
+            "length": 200,
+            "openings": [
+               { "type": "door", "offset": 10, "width": 70, "to": "cozinha" }
+            ]
+          },
+          "west": { 
+            "length": 200,
+            "openings": [
+               { "type": "door", "offset": 10, "width": 70, "to": "cozinha" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "quarto2",
+        "name": "Quarto 2",
+        "position": { "x": 500, "y": 400 },
+        "walls": {
+          "north": { 
+            "exists": false,
+            "length": 350,
+            "openings": [
+                { "type": "door", "offset": 20, "to": "quarto1" }
+            ]
+          },
+          "east": { 
+            "length": 300,
+            "openings": [
+              { "type": "window", "offset": 80, "width": 120 }
+            ]
+          },
+          "south": { 
+            "length": 350
+          },
+          "west": { 
+            "exists": false,
+            "length": 300
+          }
+        }
+      },
+      {
+        "id": "area-servico",
+        "name": "Área de Serviço",
+        "position": { "x": 300, "y": 600 },
+        "walls": {
+          "north": { 
+            "exists": false,
+            "length": 200
+          },
+          "east": { 
+            "length": 100
+          },
+          "south": { 
+            "length": 200,
+            "openings": [
+              { "type": "door", "offset": 60, "to": "external" }
+            ]
+          },
+          "west": { 
+            "exists": false,
+            "length": 100
+          }
+        }
+      }
+    ],
+
+    "elements": []
+  }
+}

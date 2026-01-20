@@ -1,0 +1,267 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://floor-plan.local/floor-plan.schema.json",
+  "title": "Floor Plan",
+  "description": "Schema for defining house floor plans with rooms, walls, and openings",
+  "type": "object",
+  "required": ["version", "unit", "floor"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Reference to this schema"
+    },
+    "version": {
+      "type": "string",
+      "description": "Schema version",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "unit": {
+      "type": "string",
+      "enum": ["cm", "mm", "m"],
+      "default": "cm",
+      "description": "Unit of measurement for all dimensions"
+    },
+    "scale": {
+      "type": "number",
+      "minimum": 0.01,
+      "maximum": 10,
+      "default": 0.2,
+      "description": "Conversion factor: 1 unit = scale pixels"
+    },
+    "defaults": {
+      "$ref": "#/$defs/defaults"
+    },
+    "floor": {
+      "$ref": "#/$defs/floor"
+    }
+  },
+  "$defs": {
+    "defaults": {
+      "type": "object",
+      "description": "Default values for walls and openings",
+      "properties": {
+        "wall": {
+          "type": "object",
+          "properties": {
+            "height": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Default wall height"
+            },
+            "thickness": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Default wall thickness"
+            }
+          }
+        },
+        "door": {
+          "type": "object",
+          "properties": {
+            "width": {
+              "type": "number",
+              "minimum": 0
+            },
+            "height": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "window": {
+          "type": "object",
+          "properties": {
+            "width": {
+              "type": "number",
+              "minimum": 0
+            },
+            "height": {
+              "type": "number",
+              "minimum": 0
+            },
+            "fromFloor": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Height from floor to bottom of window"
+            }
+          }
+        }
+      }
+    },
+    "floor": {
+      "type": "object",
+      "required": ["id", "rooms"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the floor"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name for the floor"
+        },
+        "rooms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/room"
+          },
+          "minItems": 1
+        },
+        "elements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/element"
+          },
+          "description": "Additional structural elements (pillars, stairs, counters)"
+        }
+      }
+    },
+    "room": {
+      "type": "object",
+      "required": ["id", "position", "walls"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the room"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name for the room"
+        },
+        "position": {
+          "$ref": "#/$defs/position",
+          "description": "Top-left corner position of the room"
+        },
+        "walls": {
+          "type": "object",
+          "required": ["north", "east", "south", "west"],
+          "properties": {
+            "north": { "$ref": "#/$defs/wall" },
+            "east": { "$ref": "#/$defs/wall" },
+            "south": { "$ref": "#/$defs/wall" },
+            "west": { "$ref": "#/$defs/wall" }
+          }
+        }
+      }
+    },
+    "wall": {
+      "type": "object",
+      "properties": {
+        "length": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Wall length in units"
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Wall height (overrides default)"
+        },
+        "thickness": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Wall thickness (overrides default)"
+        },
+        "exists": {
+          "type": "boolean",
+          "default": true,
+          "description": "If false, wall is virtual (logical boundary only)"
+        },
+        "openings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/opening"
+          }
+        }
+      }
+    },
+    "opening": {
+      "type": "object",
+      "required": ["type", "offset"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["door", "window"],
+          "description": "Type of opening"
+        },
+        "offset": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Distance from wall start to opening start"
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Opening width (overrides default)"
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Opening height (overrides default)"
+        },
+        "fromFloor": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Height from floor (for windows)"
+        },
+        "to": {
+          "type": "string",
+          "description": "ID of room this opening leads to"
+        }
+      }
+    },
+    "element": {
+      "type": "object",
+      "required": ["type", "id", "position"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["pillar", "stair", "counter", "fixture"],
+          "description": "Type of structural element"
+        },
+        "id": {
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/position"
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0
+        },
+        "depth": {
+          "type": "number",
+          "minimum": 0
+        },
+        "length": {
+          "type": "number",
+          "minimum": 0,
+          "description": "For stairs: total length"
+        },
+        "direction": {
+          "type": "string",
+          "description": "For stairs: direction (up-north, up-south, up-east, up-west)"
+        },
+        "steps": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "For stairs: number of steps"
+        }
+      }
+    },
+    "position": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": {
+          "type": "number",
+          "description": "X coordinate"
+        },
+        "y": {
+          "type": "number",
+          "description": "Y coordinate"
+        }
+      }
+    }
+  }
+}
