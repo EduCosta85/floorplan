@@ -9,9 +9,10 @@ import { OpeningForm } from './OpeningForm';
 import { ConfigPanel } from './ConfigPanel';
 import { ValidationWarnings } from '../ValidationWarnings';
 import { MaterialsPanel } from './MaterialsPanel';
+import { ProjectsPanel } from './ProjectsPanel';
 import type { RoomMaterials } from '../../types/floor-plan';
 
-type Tab = 'room' | 'alerts' | 'config' | 'import';
+type Tab = 'projects' | 'room' | 'alerts' | 'config';
 
 const WALL_SIDES: WallSide[] = ['north', 'east', 'south', 'west'];
 const SIDE_LABELS: Record<WallSide, string> = {
@@ -33,8 +34,6 @@ export function EditorPanel({ validationIssues = [], onIssueClick }: EditorPanel
     deleteRoom,
     selectRoom,
     updateRoom,
-    importFloorPlan,
-    exportFloorPlan,
   } = useFloorPlan();
 
   const [activeTab, setActiveTab] = useState<Tab>('room');
@@ -46,33 +45,6 @@ export function EditorPanel({ validationIssues = [], onIssueClick }: EditorPanel
   const errorCount = validationIssues.filter(i => i.severity === 'error').length;
   const warningCount = validationIssues.filter(i => i.severity === 'warning').length;
   const totalIssues = errorCount + warningCount;
-
-  const handleExport = () => {
-    const data = exportFloorPlan();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `floor-plan-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const data = JSON.parse(event.target?.result as string);
-        importFloorPlan(data);
-      } catch {
-        alert('Erro ao importar arquivo JSON');
-      }
-    };
-    reader.readAsText(file);
-  };
 
   const handleDelete = () => {
     if (selectedRoom && confirm(`Excluir "${selectedRoom.name}"?`)) {
@@ -100,6 +72,12 @@ export function EditorPanel({ validationIssues = [], onIssueClick }: EditorPanel
       {/* Tabs */}
       <div className="editor-panel__tabs">
         <button
+          className={`editor-panel__tab ${activeTab === 'projects' ? 'active' : ''}`}
+          onClick={() => setActiveTab('projects')}
+        >
+          📁 Projetos
+        </button>
+        <button
           className={`editor-panel__tab ${activeTab === 'room' ? 'active' : ''}`}
           onClick={() => setActiveTab('room')}
         >
@@ -121,12 +99,6 @@ export function EditorPanel({ validationIssues = [], onIssueClick }: EditorPanel
           onClick={() => setActiveTab('config')}
         >
           Config
-        </button>
-        <button
-          className={`editor-panel__tab ${activeTab === 'import' ? 'active' : ''}`}
-          onClick={() => setActiveTab('import')}
-        >
-          Arquivo
         </button>
       </div>
 
@@ -235,6 +207,8 @@ export function EditorPanel({ validationIssues = [], onIssueClick }: EditorPanel
           </>
         )}
 
+        {activeTab === 'projects' && <ProjectsPanel />}
+
         {activeTab === 'alerts' && (
           <ValidationWarnings
             issues={validationIssues}
@@ -243,37 +217,6 @@ export function EditorPanel({ validationIssues = [], onIssueClick }: EditorPanel
         )}
 
         {activeTab === 'config' && <ConfigPanel />}
-
-        {activeTab === 'import' && (
-          <div className="import-export">
-            <h3>Importar / Exportar</h3>
-
-            <div className="import-export__section">
-              <h4>Exportar</h4>
-              <p>Baixe o projeto atual como arquivo JSON.</p>
-              <Button variant="primary" onClick={handleExport}>
-                Exportar JSON
-              </Button>
-            </div>
-
-            <div className="import-export__section">
-              <h4>Importar</h4>
-              <p>Carregue um arquivo JSON de planta.</p>
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImport}
-                className="import-export__file-input"
-              />
-            </div>
-
-            {state.isDirty && (
-              <p className="import-export__warning">
-                ⚠️ Há alterações não salvas
-              </p>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

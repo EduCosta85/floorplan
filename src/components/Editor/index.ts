@@ -5,3 +5,4 @@ export { OpeningForm } from './OpeningForm';
 export { ConfigPanel } from './ConfigPanel';
 export { StatsPanel } from './StatsPanel';
 export { MaterialsPanel } from './MaterialsPanel';
+export { ProjectsPanel } from './ProjectsPanel';

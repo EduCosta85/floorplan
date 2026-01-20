@@ -166,6 +166,8 @@ export interface FloorPlan {
   $schema?: string;
   /** Schema version */
   version: string;
+  /** Project name */
+  name?: string;
   /** Unit of measurement for all dimensions */
   unit: Unit;
   /** Conversion factor: 1 unit = scale pixels */
