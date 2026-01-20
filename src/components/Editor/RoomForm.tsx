@@ -59,23 +59,36 @@ export function RoomForm({ room, onClose }: RoomFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const newRoom: Room = {
-      id: formData.id,
-      name: formData.name || formData.id,
-      position: { x: formData.x, y: formData.y },
-      walls: {
-        north: { length: formData.width },
-        east: { length: formData.height },
-        south: { length: formData.width },
-        west: { length: formData.height },
-      },
-      hasFloor: formData.hasFloor,
-      hasCeiling: formData.hasCeiling,
-    };
-
-    if (isEditing) {
-      updateRoom(room.id, newRoom);
+    if (isEditing && room) {
+      // PRESERVE existing wall properties (exists, openings, thickness, etc.)
+      // Only update what changed
+      updateRoom(room.id, {
+        name: formData.name || formData.id,
+        position: { x: formData.x, y: formData.y },
+        walls: {
+          north: { ...room.walls.north, length: formData.width },
+          east: { ...room.walls.east, length: formData.height },
+          south: { ...room.walls.south, length: formData.width },
+          west: { ...room.walls.west, length: formData.height },
+        },
+        hasFloor: formData.hasFloor,
+        hasCeiling: formData.hasCeiling,
+      });
     } else {
+      // New room - create fresh walls
+      const newRoom: Room = {
+        id: formData.id,
+        name: formData.name || formData.id,
+        position: { x: formData.x, y: formData.y },
+        walls: {
+          north: { length: formData.width },
+          east: { length: formData.height },
+          south: { length: formData.width },
+          west: { length: formData.height },
+        },
+        hasFloor: formData.hasFloor,
+        hasCeiling: formData.hasCeiling,
+      };
       addRoom(newRoom);
     }
 
