@@ -7,7 +7,7 @@ import {
   Html,
 } from '@react-three/drei';
 import * as THREE from 'three';
-import type { FloorPlan, Room, WallSide } from '../types/floor-plan';
+import type { FloorPlan, Room, WallSide, Furniture } from '../types/floor-plan';
 import { 
   createFloorMaterial, 
   createWallMaterial, 
@@ -15,6 +15,7 @@ import {
   createWindowMaterial,
   createCeilingMaterial,
 } from './3d/materials';
+import { getFurnitureTemplate } from '../data/furniture-library';
 
 interface FloorPlan3DProps {
   floorPlan: FloorPlan;
@@ -34,6 +35,170 @@ const HEIGHT_PRESETS = [
   { label: 'Alto', height: 185, icon: '🧍' },
   { label: 'Muito Alto', height: 200, icon: '🏀' },
 ];
+
+// Furniture Mesh Component
+interface FurnitureMeshProps {
+  furniture: Furniture;
+  scale: number;
+}
+
+function FurnitureMesh({ furniture, scale }: FurnitureMeshProps) {
+  const template = getFurnitureTemplate(furniture.templateId);
+  if (!template) return null;
+  
+  const unitScale = scale * 0.01;
+  
+  const width = (furniture.width ?? template.width) * unitScale;
+  const depth = (furniture.depth ?? template.depth) * unitScale;
+  const height = (furniture.height ?? template.height) * unitScale;
+  const elevation = (furniture.elevation ?? template.elevation ?? 0) * unitScale;
+  const x = furniture.position.x * unitScale;
+  const z = furniture.position.y * unitScale;
+  const rotation = (furniture.rotation * Math.PI) / 180;
+  const color = furniture.color ?? template.color;
+  const structuralType = template.structuralType;
+  
+  // Position at center of furniture for rotation
+  const centerX = x + (furniture.width ?? template.width) * unitScale / 2;
+  const centerZ = z + (furniture.depth ?? template.depth) * unitScale / 2;
+  // Y position considers elevation (distance from floor)
+  const centerY = elevation + height / 2;
+  
+  const material = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      color: color,
+      roughness: 0.7,
+      metalness: 0.1,
+    });
+  }, [color]);
+  
+  const waterMaterial = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      color: '#06b6d4',
+      roughness: 0.1,
+      metalness: 0.3,
+      transparent: true,
+      opacity: 0.8,
+    });
+  }, []);
+  
+  const secondaryMaterial = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      color: template.secondaryColor ?? color,
+      roughness: 0.8,
+      metalness: 0.1,
+    });
+  }, [template.secondaryColor, color]);
+  
+  // Pool rendering
+  if (structuralType === 'pool') {
+    const borderWidthCm = furniture.borderWidth ?? template.borderWidth ?? 20;
+    const borderWidthUnits = borderWidthCm * unitScale;
+    const waterDepthCm = furniture.waterDepth ?? template.waterDepth ?? 140;
+    const waterLevel = Math.min(waterDepthCm * unitScale, height - 0.02);
+    
+    return (
+      <group position={[centerX, 0, centerZ]} rotation={[0, rotation, 0]}>
+        {/* Pool walls (outer shell - the border) */}
+        <mesh castShadow receiveShadow position={[0, height / 2, 0]}>
+          <boxGeometry args={[width, height, depth]} />
+          <primitive object={secondaryMaterial} attach="material" />
+        </mesh>
+        {/* Pool interior (cutout effect - slightly smaller, darker) */}
+        <mesh position={[0, height / 2 + 0.01, 0]}>
+          <boxGeometry args={[width - borderWidthUnits * 2, height, depth - borderWidthUnits * 2]} />
+          <meshStandardMaterial color="#0e7490" roughness={0.3} />
+        </mesh>
+        {/* Water surface */}
+        <mesh position={[0, waterLevel, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[width - borderWidthUnits * 2, depth - borderWidthUnits * 2]} />
+          <primitive object={waterMaterial} attach="material" />
+        </mesh>
+      </group>
+    );
+  }
+  
+  // Stair rendering
+  if (structuralType === 'stair') {
+    const numSteps = template.steps ?? 15;
+    const stepHeight = height / numSteps;
+    const stepDepth = depth / numSteps;
+    
+    return (
+      <group position={[centerX, 0, centerZ]} rotation={[0, rotation, 0]}>
+        {Array.from({ length: numSteps }).map((_, i) => (
+          <mesh 
+            key={i} 
+            castShadow 
+            receiveShadow
+            position={[0, stepHeight * (i + 0.5), -depth / 2 + stepDepth * (i + 0.5)]}
+          >
+            <boxGeometry args={[width, stepHeight * 0.95, stepDepth * 0.95]} />
+            <primitive object={i % 2 === 0 ? material : secondaryMaterial} attach="material" />
+          </mesh>
+        ))}
+      </group>
+    );
+  }
+  
+  // Pillar rendering (cylinder for round)
+  if (structuralType === 'pillar' && template.id === 'pillar-round') {
+    return (
+      <group position={[centerX, centerY, centerZ]} rotation={[0, rotation, 0]}>
+        <mesh castShadow receiveShadow>
+          <cylinderGeometry args={[width / 2, width / 2, height, 16]} />
+          <primitive object={material} attach="material" />
+        </mesh>
+      </group>
+    );
+  }
+  
+  // Deck rendering (flat with slight height)
+  if (structuralType === 'deck') {
+    const plankWidth = 0.1;
+    const numPlanks = Math.floor(width / plankWidth);
+    
+    return (
+      <group position={[centerX, height / 2, centerZ]} rotation={[0, rotation, 0]}>
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={[width, height, depth]} />
+          <primitive object={material} attach="material" />
+        </mesh>
+        {/* Plank lines */}
+        {Array.from({ length: numPlanks }).map((_, i) => (
+          <mesh 
+            key={i}
+            position={[-width / 2 + plankWidth * (i + 0.5), height / 2 + 0.001, 0]}
+          >
+            <boxGeometry args={[0.005, 0.001, depth]} />
+            <primitive object={secondaryMaterial} attach="material" />
+          </mesh>
+        ))}
+      </group>
+    );
+  }
+  
+  // Default furniture rendering
+  return (
+    <group position={[centerX, centerY, centerZ]} rotation={[0, rotation, 0]}>
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[width, height, depth]} />
+        <primitive object={material} attach="material" />
+      </mesh>
+      {/* Top surface highlight */}
+      <mesh position={[0, height / 2 + 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[width * 0.95, depth * 0.95]} />
+        <meshStandardMaterial
+          color={color}
+          roughness={0.5}
+          metalness={0.2}
+          opacity={0.8}
+          transparent
+        />
+      </mesh>
+    </group>
+  );
+}
 
 interface RoomMeshProps {
   room: Room;
@@ -744,6 +909,15 @@ function Scene({
           showCeiling={showCeiling}
           onClick={() => onRoomClick?.(room.id)}
           onHover={(hovered) => onRoomHover(hovered ? room.id : null)}
+        />
+      ))}
+      
+      {/* Furniture */}
+      {(floorPlan.floor.furniture ?? []).map((furniture) => (
+        <FurnitureMesh
+          key={furniture.id}
+          furniture={furniture}
+          scale={scale}
         />
       ))}
     </>

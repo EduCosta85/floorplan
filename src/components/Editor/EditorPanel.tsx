@@ -10,9 +10,10 @@ import { ConfigPanel } from './ConfigPanel';
 import { ValidationWarnings } from '../ValidationWarnings';
 import { MaterialsPanel } from './MaterialsPanel';
 import { ProjectsPanel } from './ProjectsPanel';
+import { FurniturePanel } from './FurniturePanel';
 import type { RoomMaterials } from '../../types/floor-plan';
 
-type Tab = 'projects' | 'room' | 'alerts' | 'config';
+type Tab = 'projects' | 'room' | 'furniture' | 'alerts' | 'config';
 
 const WALL_SIDES: WallSide[] = ['north', 'east', 'south', 'west'];
 const SIDE_LABELS: Record<WallSide, string> = {
@@ -82,6 +83,12 @@ export function EditorPanel({ validationIssues = [], onIssueClick }: EditorPanel
           onClick={() => setActiveTab('room')}
         >
           Cômodos
+        </button>
+        <button
+          className={`editor-panel__tab ${activeTab === 'furniture' ? 'active' : ''}`}
+          onClick={() => setActiveTab('furniture')}
+        >
+          🪑 Móveis
         </button>
         <button
           className={`editor-panel__tab ${activeTab === 'alerts' ? 'active' : ''}`}
@@ -208,6 +215,8 @@ export function EditorPanel({ validationIssues = [], onIssueClick }: EditorPanel
         )}
 
         {activeTab === 'projects' && <ProjectsPanel />}
+
+        {activeTab === 'furniture' && <FurniturePanel />}
 
         {activeTab === 'alerts' && (
           <ValidationWarnings

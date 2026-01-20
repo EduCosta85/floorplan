@@ -9,8 +9,15 @@ import './App.css';
 type MainView = 'floorplan' | '3d' | 'costs';
 
 function FloorPlanApp() {
-  const { state, selectRoom, clearSelection } = useFloorPlan();
-  const { floorPlan, selectedRoomId } = state;
+  const { 
+    state, 
+    selectRoom, 
+    clearSelection,
+    selectFurniture,
+    moveFurniture,
+    rotateFurniture,
+  } = useFloorPlan();
+  const { floorPlan, selectedRoomId, selectedFurnitureId } = state;
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
   const [mainView, setMainView] = useState<MainView>('floorplan');
 
@@ -87,9 +94,16 @@ function FloorPlanApp() {
               floorPlan={floorPlan}
               padding={30}
               selectedRoomId={selectedRoomId}
+              selectedFurnitureId={selectedFurnitureId}
               onRoomClick={selectRoom}
-              onBackgroundClick={clearSelection}
+              onBackgroundClick={() => {
+                clearSelection();
+                selectFurniture(null);
+              }}
               onValidation={handleValidation}
+              onFurnitureClick={selectFurniture}
+              onFurnitureMove={moveFurniture}
+              onFurnitureRotate={rotateFurniture}
             />
           )}
           {mainView === '3d' && (

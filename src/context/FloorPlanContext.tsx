@@ -12,6 +12,8 @@ import type {
   Opening,
   Defaults,
   WallSide,
+  Furniture,
+  Position,
 } from '../types/floor-plan';
 
 // Default empty floor plan
@@ -29,6 +31,7 @@ const createEmptyFloorPlan = (): FloorPlan => ({
     name: 'Térreo',
     rooms: [],
     elements: [],
+    furniture: [],
   },
 });
 
@@ -37,6 +40,7 @@ interface FloorPlanState {
   floorPlan: FloorPlan;
   selectedRoomId: string | null;
   selectedWallSide: WallSide | null;
+  selectedFurnitureId: string | null;
   isDirty: boolean;
 }
 
@@ -45,6 +49,7 @@ type FloorPlanAction =
   | { type: 'SET_FLOOR_PLAN'; payload: FloorPlan }
   | { type: 'SELECT_ROOM'; payload: string | null }
   | { type: 'SELECT_WALL'; payload: { roomId: string; side: WallSide } | null }
+  | { type: 'SELECT_FURNITURE'; payload: string | null }
   | { type: 'ADD_ROOM'; payload: Room }
   | { type: 'UPDATE_ROOM'; payload: { id: string; room: Partial<Room> } }
   | { type: 'DELETE_ROOM'; payload: string }
@@ -54,6 +59,10 @@ type FloorPlanAction =
   | { type: 'DELETE_OPENING'; payload: { roomId: string; side: WallSide; index: number } }
   | { type: 'UPDATE_DEFAULTS'; payload: Partial<Defaults> }
   | { type: 'UPDATE_CONFIG'; payload: Partial<Pick<FloorPlan, 'unit' | 'scale'>> }
+  | { type: 'ADD_FURNITURE'; payload: Furniture }
+  | { type: 'UPDATE_FURNITURE'; payload: { id: string; furniture: Partial<Furniture> } }
+  | { type: 'DELETE_FURNITURE'; payload: string }
+  | { type: 'MOVE_FURNITURE'; payload: { id: string; position: Position } }
   | { type: 'MARK_CLEAN' };
 
 // Reducer
@@ -62,9 +71,16 @@ function floorPlanReducer(state: FloorPlanState, action: FloorPlanAction): Floor
     case 'SET_FLOOR_PLAN':
       return {
         ...state,
-        floorPlan: action.payload,
+        floorPlan: {
+          ...action.payload,
+          floor: {
+            ...action.payload.floor,
+            furniture: action.payload.floor.furniture ?? [],
+          },
+        },
         selectedRoomId: null,
         selectedWallSide: null,
+        selectedFurnitureId: null,
         isDirty: false,
       };
 
@@ -73,6 +89,7 @@ function floorPlanReducer(state: FloorPlanState, action: FloorPlanAction): Floor
         ...state,
         selectedRoomId: action.payload,
         selectedWallSide: null,
+        selectedFurnitureId: null,
       };
 
     case 'SELECT_WALL':
@@ -80,6 +97,15 @@ function floorPlanReducer(state: FloorPlanState, action: FloorPlanAction): Floor
         ...state,
         selectedRoomId: action.payload?.roomId ?? state.selectedRoomId,
         selectedWallSide: action.payload?.side ?? null,
+        selectedFurnitureId: null,
+      };
+
+    case 'SELECT_FURNITURE':
+      return {
+        ...state,
+        selectedFurnitureId: action.payload,
+        selectedRoomId: null,
+        selectedWallSide: null,
       };
 
     case 'ADD_ROOM':
@@ -93,6 +119,7 @@ function floorPlanReducer(state: FloorPlanState, action: FloorPlanAction): Floor
           },
         },
         selectedRoomId: action.payload.id,
+        selectedFurnitureId: null,
         isDirty: true,
       };
 
@@ -247,6 +274,72 @@ function floorPlanReducer(state: FloorPlanState, action: FloorPlanAction): Floor
         isDirty: true,
       };
 
+    // Furniture actions
+    case 'ADD_FURNITURE': {
+      const furniture = state.floorPlan.floor.furniture ?? [];
+      return {
+        ...state,
+        floorPlan: {
+          ...state.floorPlan,
+          floor: {
+            ...state.floorPlan.floor,
+            furniture: [...furniture, action.payload],
+          },
+        },
+        selectedFurnitureId: action.payload.id,
+        selectedRoomId: null,
+        selectedWallSide: null,
+        isDirty: true,
+      };
+    }
+
+    case 'UPDATE_FURNITURE': {
+      const furniture = (state.floorPlan.floor.furniture ?? []).map((f) =>
+        f.id === action.payload.id
+          ? { ...f, ...action.payload.furniture }
+          : f
+      );
+      return {
+        ...state,
+        floorPlan: {
+          ...state.floorPlan,
+          floor: { ...state.floorPlan.floor, furniture },
+        },
+        isDirty: true,
+      };
+    }
+
+    case 'DELETE_FURNITURE': {
+      const furniture = (state.floorPlan.floor.furniture ?? []).filter(
+        (f) => f.id !== action.payload
+      );
+      return {
+        ...state,
+        floorPlan: {
+          ...state.floorPlan,
+          floor: { ...state.floorPlan.floor, furniture },
+        },
+        selectedFurnitureId: state.selectedFurnitureId === action.payload ? null : state.selectedFurnitureId,
+        isDirty: true,
+      };
+    }
+
+    case 'MOVE_FURNITURE': {
+      const furniture = (state.floorPlan.floor.furniture ?? []).map((f) =>
+        f.id === action.payload.id
+          ? { ...f, position: action.payload.position }
+          : f
+      );
+      return {
+        ...state,
+        floorPlan: {
+          ...state.floorPlan,
+          floor: { ...state.floorPlan.floor, furniture },
+        },
+        isDirty: true,
+      };
+    }
+
     case 'MARK_CLEAN':
       return { ...state, isDirty: false };
 
@@ -261,6 +354,7 @@ interface FloorPlanContextValue {
   // Selection
   selectRoom: (id: string | null) => void;
   selectWall: (roomId: string, side: WallSide) => void;
+  selectFurniture: (id: string | null) => void;
   clearSelection: () => void;
   // Room operations
   addRoom: (room: Room) => void;
@@ -275,12 +369,20 @@ interface FloorPlanContextValue {
   // Config operations
   updateDefaults: (defaults: Partial<Defaults>) => void;
   updateConfig: (config: Partial<Pick<FloorPlan, 'unit' | 'scale'>>) => void;
+  // Furniture operations
+  addFurniture: (furniture: Furniture) => void;
+  updateFurniture: (id: string, furniture: Partial<Furniture>) => void;
+  deleteFurniture: (id: string) => void;
+  moveFurniture: (id: string, position: Position) => void;
+  rotateFurniture: (id: string) => void;
   // Import/Export
   importFloorPlan: (floorPlan: FloorPlan) => void;
   exportFloorPlan: () => FloorPlan;
   // Helpers
   getSelectedRoom: () => Room | null;
+  getSelectedFurniture: () => Furniture | null;
   generateRoomId: () => string;
+  generateFurnitureId: () => string;
 }
 
 const FloorPlanContext = createContext<FloorPlanContextValue | null>(null);
@@ -296,6 +398,7 @@ export function FloorPlanProvider({ children, initialFloorPlan }: FloorPlanProvi
     floorPlan: initialFloorPlan ?? createEmptyFloorPlan(),
     selectedRoomId: null,
     selectedWallSide: null,
+    selectedFurnitureId: null,
     isDirty: false,
   });
 
@@ -305,6 +408,10 @@ export function FloorPlanProvider({ children, initialFloorPlan }: FloorPlanProvi
 
   const selectWall = useCallback((roomId: string, side: WallSide) => {
     dispatch({ type: 'SELECT_WALL', payload: { roomId, side } });
+  }, []);
+
+  const selectFurniture = useCallback((id: string | null) => {
+    dispatch({ type: 'SELECT_FURNITURE', payload: id });
   }, []);
 
   const clearSelection = useCallback(() => {
@@ -350,6 +457,31 @@ export function FloorPlanProvider({ children, initialFloorPlan }: FloorPlanProvi
     dispatch({ type: 'UPDATE_CONFIG', payload: config });
   }, []);
 
+  // Furniture operations
+  const addFurniture = useCallback((furniture: Furniture) => {
+    dispatch({ type: 'ADD_FURNITURE', payload: furniture });
+  }, []);
+
+  const updateFurniture = useCallback((id: string, furniture: Partial<Furniture>) => {
+    dispatch({ type: 'UPDATE_FURNITURE', payload: { id, furniture } });
+  }, []);
+
+  const deleteFurniture = useCallback((id: string) => {
+    dispatch({ type: 'DELETE_FURNITURE', payload: id });
+  }, []);
+
+  const moveFurniture = useCallback((id: string, position: Position) => {
+    dispatch({ type: 'MOVE_FURNITURE', payload: { id, position } });
+  }, []);
+
+  const rotateFurniture = useCallback((id: string) => {
+    const furniture = state.floorPlan.floor.furniture?.find((f) => f.id === id);
+    if (furniture) {
+      const newRotation = (furniture.rotation + 90) % 360;
+      dispatch({ type: 'UPDATE_FURNITURE', payload: { id, furniture: { rotation: newRotation } } });
+    }
+  }, [state.floorPlan.floor.furniture]);
+
   const importFloorPlan = useCallback((floorPlan: FloorPlan) => {
     dispatch({ type: 'SET_FLOOR_PLAN', payload: floorPlan });
   }, []);
@@ -363,6 +495,11 @@ export function FloorPlanProvider({ children, initialFloorPlan }: FloorPlanProvi
     return state.floorPlan.floor.rooms.find((r) => r.id === state.selectedRoomId) ?? null;
   }, [state.selectedRoomId, state.floorPlan.floor.rooms]);
 
+  const getSelectedFurniture = useCallback(() => {
+    if (!state.selectedFurnitureId) return null;
+    return state.floorPlan.floor.furniture?.find((f) => f.id === state.selectedFurnitureId) ?? null;
+  }, [state.selectedFurnitureId, state.floorPlan.floor.furniture]);
+
   const generateRoomId = useCallback(() => {
     const existing = state.floorPlan.floor.rooms.map((r) => r.id);
     let counter = existing.length + 1;
@@ -374,10 +511,22 @@ export function FloorPlanProvider({ children, initialFloorPlan }: FloorPlanProvi
     return id;
   }, [state.floorPlan.floor.rooms]);
 
+  const generateFurnitureId = useCallback(() => {
+    const existing = (state.floorPlan.floor.furniture ?? []).map((f) => f.id);
+    let counter = existing.length + 1;
+    let id = `furniture-${counter}`;
+    while (existing.includes(id)) {
+      counter++;
+      id = `furniture-${counter}`;
+    }
+    return id;
+  }, [state.floorPlan.floor.furniture]);
+
   const value: FloorPlanContextValue = {
     state,
     selectRoom,
     selectWall,
+    selectFurniture,
     clearSelection,
     addRoom,
     updateRoom,
@@ -388,10 +537,17 @@ export function FloorPlanProvider({ children, initialFloorPlan }: FloorPlanProvi
     deleteOpening,
     updateDefaults,
     updateConfig,
+    addFurniture,
+    updateFurniture,
+    deleteFurniture,
+    moveFurniture,
+    rotateFurniture,
     importFloorPlan,
     exportFloorPlan,
     getSelectedRoom,
+    getSelectedFurniture,
     generateRoomId,
+    generateFurnitureId,
   };
 
   return (

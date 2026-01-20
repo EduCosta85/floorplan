@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useRef, useState, useCallback } from 'react';
-import type { FloorPlan } from '../types/floor-plan';
+import type { FloorPlan, Furniture, Position } from '../types/floor-plan';
 import { calculateFloorGeometry } from '../utils/floor-plan.utils';
 import {
   validateFloorPlan,
@@ -7,6 +7,7 @@ import {
   getDuplicateWalls,
   type ValidationIssue,
 } from '../utils/validation';
+import { getFurnitureTemplate } from '../data/furniture-library';
 import { Room } from './Room';
 import { Compass } from './Compass';
 import { ZoomControls } from './ZoomControls';
@@ -18,9 +19,13 @@ interface FloorPlanViewerProps {
   showCompass?: boolean;
   backgroundColor?: string;
   selectedRoomId?: string | null;
+  selectedFurnitureId?: string | null;
   onRoomClick?: (roomId: string) => void;
   onBackgroundClick?: () => void;
   onValidation?: (issues: ValidationIssue[]) => void;
+  onFurnitureClick?: (furnitureId: string) => void;
+  onFurnitureMove?: (furnitureId: string, position: Position) => void;
+  onFurnitureRotate?: (furnitureId: string) => void;
 }
 
 /**
@@ -33,15 +38,25 @@ export function FloorPlanViewer({
   showCompass = true,
   backgroundColor = '#fff',
   selectedRoomId,
+  selectedFurnitureId,
   onRoomClick,
   onBackgroundClick,
   onValidation,
+  onFurnitureClick,
+  onFurnitureMove,
+  onFurnitureRotate,
 }: FloorPlanViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const lastPanPos = useRef({ x: 0, y: 0 });
+  
+  // Furniture drag state
+  const [draggingFurnitureId, setDraggingFurnitureId] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const clickedOnFurniture = useRef(false);
 
   const geometry = useMemo(
     () => calculateFloorGeometry(floorPlan),
@@ -125,6 +140,42 @@ export function FloorPlanViewer({
     return () => container.removeEventListener('wheel', handleWheel);
   }, []);
 
+  // Convert screen coordinates to SVG coordinates
+  const screenToSvg = useCallback((clientX: number, clientY: number): Position => {
+    if (!svgRef.current) return { x: 0, y: 0 };
+    const svg = svgRef.current;
+    const pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse());
+    return { x: svgP.x, y: svgP.y };
+  }, []);
+
+  // Furniture drag handlers
+  const handleFurnitureMouseDown = useCallback((e: React.MouseEvent, furniture: Furniture) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (e.button !== 0) return;
+    
+    // Mark that we clicked on furniture to prevent background click from clearing selection
+    clickedOnFurniture.current = true;
+    
+    const svgPos = screenToSvg(e.clientX, e.clientY);
+    const template = getFurnitureTemplate(furniture.templateId);
+    if (!template) return;
+
+    // Calculate offset from furniture position to click position
+    const furnitureX = furniture.position.x * scale;
+    const furnitureY = furniture.position.y * scale;
+    
+    setDragOffset({
+      x: svgPos.x - furnitureX,
+      y: svgPos.y - furnitureY,
+    });
+    setDraggingFurnitureId(furniture.id);
+    onFurnitureClick?.(furniture.id);
+  }, [screenToSvg, scale, onFurnitureClick]);
+
   // Pan handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 1 || (e.button === 0 && e.altKey)) {
@@ -135,6 +186,15 @@ export function FloorPlanViewer({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    // Handle furniture dragging
+    if (draggingFurnitureId) {
+      const svgPos = screenToSvg(e.clientX, e.clientY);
+      const newX = (svgPos.x - dragOffset.x) / scale;
+      const newY = (svgPos.y - dragOffset.y) / scale;
+      onFurnitureMove?.(draggingFurnitureId, { x: newX, y: newY });
+      return;
+    }
+    
     if (!isPanning) return;
     const dx = e.clientX - lastPanPos.current.x;
     const dy = e.clientY - lastPanPos.current.y;
@@ -148,13 +208,39 @@ export function FloorPlanViewer({
 
   const handleMouseUp = () => {
     setIsPanning(false);
+    setDraggingFurnitureId(null);
+    // Reset click flag after a small delay to allow click event to fire first
+    setTimeout(() => {
+      clickedOnFurniture.current = false;
+    }, 10);
   };
 
   const handleMouseLeave = () => {
     setIsPanning(false);
+    setDraggingFurnitureId(null);
+    clickedOnFurniture.current = false;
   };
+  
+  // Keyboard handler for rotation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'r' || e.key === 'R') {
+        if (selectedFurnitureId) {
+          onFurnitureRotate?.(selectedFurnitureId);
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedFurnitureId, onFurnitureRotate]);
 
   const handleBackgroundClick = (e: React.MouseEvent) => {
+    // If we clicked on furniture, don't clear the selection
+    if (clickedOnFurniture.current) {
+      clickedOnFurniture.current = false;
+      return;
+    }
     if (e.altKey || isPanning) return;
     onBackgroundClick?.();
   };
@@ -184,6 +270,7 @@ export function FloorPlanViewer({
       />
 
       <svg
+        ref={svgRef}
         className="floor-plan-svg"
         viewBox={`${viewBoxX} ${viewBoxY} ${zoomedWidth} ${zoomedHeight}`}
         preserveAspectRatio="xMidYMid meet"
@@ -213,6 +300,42 @@ export function FloorPlanViewer({
             patternTransform="rotate(45)"
           >
             <line x1="0" y1="0" x2="0" y2="8" stroke="#d32f2f" strokeWidth="2" />
+          </pattern>
+          {/* Pool water pattern */}
+          <pattern
+            id="water-pattern"
+            width="8"
+            height="8"
+            patternUnits="userSpaceOnUse"
+          >
+            <rect width="8" height="8" fill="#06b6d4" />
+            <path
+              d="M 0 4 Q 2 2, 4 4 T 8 4"
+              fill="none"
+              stroke="#0891b2"
+              strokeWidth="0.5"
+              opacity="0.5"
+            />
+          </pattern>
+          {/* Stair pattern */}
+          <pattern
+            id="stair-pattern"
+            width="4"
+            height="12"
+            patternUnits="userSpaceOnUse"
+          >
+            <rect width="4" height="12" fill="#8B7355" />
+            <line x1="0" y1="0" x2="4" y2="0" stroke="#6B5344" strokeWidth="1" />
+          </pattern>
+          {/* Deck pattern */}
+          <pattern
+            id="deck-pattern"
+            width="20"
+            height="4"
+            patternUnits="userSpaceOnUse"
+          >
+            <rect width="20" height="4" fill="#a16207" />
+            <line x1="0" y1="2" x2="20" y2="2" stroke="#854d0e" strokeWidth="0.5" />
           </pattern>
         </defs>
 
@@ -251,6 +374,185 @@ export function FloorPlanViewer({
               onClick={onRoomClick}
             />
           ))}
+        </g>
+
+        {/* Furniture */}
+        <g className="floor-plan-furniture">
+          {(floorPlan.floor.furniture ?? []).map((furniture) => {
+            const template = getFurnitureTemplate(furniture.templateId);
+            if (!template) return null;
+            
+            const width = (furniture.width ?? template.width) * scale;
+            const depth = (furniture.depth ?? template.depth) * scale;
+            const x = furniture.position.x * scale;
+            const y = furniture.position.y * scale;
+            const rotation = furniture.rotation;
+            const color = furniture.color ?? template.color;
+            const isSelected = furniture.id === selectedFurnitureId;
+            const isDragging = furniture.id === draggingFurnitureId;
+            const isWallMounted = template.wallMounted || (furniture.elevation ?? template.elevation ?? 0) > 0;
+            const structuralType = template.structuralType;
+            
+            // For rotation, we rotate around the center of the furniture
+            const centerX = x + width / 2;
+            const centerY = y + depth / 2;
+            
+            // Determine fill based on structural type
+            let fill = color;
+            let fillOpacity = isWallMounted ? 0.6 : 0.8;
+            let strokeColor = isSelected ? '#2196f3' : isWallMounted ? '#9333ea' : '#666';
+            
+            if (structuralType === 'pool') {
+              fill = 'url(#water-pattern)';
+              fillOpacity = 0.9;
+              strokeColor = isSelected ? '#2196f3' : '#0891b2';
+            } else if (structuralType === 'stair') {
+              fill = 'url(#stair-pattern)';
+              fillOpacity = 1;
+              strokeColor = isSelected ? '#2196f3' : '#5d4e3a';
+            } else if (structuralType === 'deck') {
+              fill = 'url(#deck-pattern)';
+              fillOpacity = 1;
+              strokeColor = isSelected ? '#2196f3' : '#854d0e';
+            }
+            
+            return (
+              <g
+                key={furniture.id}
+                className={`furniture-item-svg ${isSelected ? 'selected' : ''} ${isDragging ? 'dragging' : ''} ${isWallMounted ? 'wall-mounted' : ''} ${structuralType ? `structural-${structuralType}` : ''}`}
+                transform={`rotate(${rotation} ${centerX} ${centerY})`}
+                onMouseDown={(e) => handleFurnitureMouseDown(e, furniture)}
+                style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+              >
+                {/* Furniture/Structural shape */}
+                <rect
+                  x={x}
+                  y={y}
+                  width={width}
+                  height={depth}
+                  fill={fill}
+                  fillOpacity={fillOpacity}
+                  stroke={strokeColor}
+                  strokeWidth={isSelected ? 2 : 1}
+                  strokeDasharray={isWallMounted ? '4,2' : 'none'}
+                  rx={structuralType === 'pool' ? Math.min(width, depth) * 0.05 : 2}
+                  ry={structuralType === 'pool' ? Math.min(width, depth) * 0.05 : 2}
+                />
+                
+                {/* Stair steps indicator lines */}
+                {structuralType === 'stair' && (
+                  <>
+                    {Array.from({ length: Math.floor(depth / 12) }).map((_, i) => (
+                      <line
+                        key={i}
+                        x1={x + 2}
+                        y1={y + i * 12 + 6}
+                        x2={x + width - 2}
+                        y2={y + i * 12 + 6}
+                        stroke="#5d4e3a"
+                        strokeWidth={0.5}
+                      />
+                    ))}
+                    {/* Arrow indicating direction */}
+                    <polygon
+                      points={`${x + width / 2},${y + 4} ${x + width / 2 - 6},${y + 14} ${x + width / 2 + 6},${y + 14}`}
+                      fill="#fff"
+                      fillOpacity={0.8}
+                    />
+                  </>
+                )}
+                
+                {/* Pool inner edge */}
+                {structuralType === 'pool' && (() => {
+                  const borderWidth = (furniture.borderWidth ?? template.borderWidth ?? 20) * scale;
+                  return (
+                    <rect
+                      x={x + borderWidth}
+                      y={y + borderWidth}
+                      width={width - borderWidth * 2}
+                      height={depth - borderWidth * 2}
+                      fill="none"
+                      stroke="#fff"
+                      strokeWidth={1}
+                      strokeOpacity={0.3}
+                      rx={Math.min(width, depth) * 0.03}
+                      ry={Math.min(width, depth) * 0.03}
+                    />
+                  );
+                })()}
+                
+                {/* Direction indicator (small triangle on "front") - not for pools */}
+                {structuralType !== 'pool' && structuralType !== 'stair' && (
+                  <polygon
+                    points={`${x + width / 2 - 4},${y + 2} ${x + width / 2 + 4},${y + 2} ${x + width / 2},${y + 8}`}
+                    fill="#fff"
+                    fillOpacity={0.6}
+                  />
+                )}
+                
+                {/* Label */}
+                {showLabels && (
+                  <text
+                    x={x + width / 2}
+                    y={y + depth / 2}
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    fontSize={Math.min(width, depth) * 0.2}
+                    fill={structuralType === 'pool' ? '#fff' : '#fff'}
+                    style={{ 
+                      pointerEvents: 'none',
+                      textShadow: '0 1px 3px rgba(0,0,0,0.7)',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {template.icon}
+                  </text>
+                )}
+                
+                {/* Selection handles */}
+                {isSelected && (
+                  <>
+                    <rect
+                      x={x - 4}
+                      y={y - 4}
+                      width={8}
+                      height={8}
+                      fill="#2196f3"
+                      stroke="#fff"
+                      strokeWidth={1}
+                    />
+                    <rect
+                      x={x + width - 4}
+                      y={y - 4}
+                      width={8}
+                      height={8}
+                      fill="#2196f3"
+                      stroke="#fff"
+                      strokeWidth={1}
+                    />
+                    <rect
+                      x={x - 4}
+                      y={y + depth - 4}
+                      width={8}
+                      height={8}
+                      fill="#2196f3"
+                      stroke="#fff"
+                      strokeWidth={1}
+                    />
+                    <rect
+                      x={x + width - 4}
+                      y={y + depth - 4}
+                      width={8}
+                      height={8}
+                      fill="#2196f3"
+                      stroke="#fff"
+                      strokeWidth={1}
+                    />
+                  </>
+                )}
+              </g>
+            );
+          })}
         </g>
 
         {/* Overlaps */}

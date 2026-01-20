@@ -3382,3 +3382,370 @@ body {
 .projects-panel__version-actions button:hover {
   background: #e2e8f0;
 }
+
+/* ============================================
+   Furniture Panel
+   ============================================ */
+
+.furniture-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.furniture-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.furniture-panel__header h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+  margin: 0;
+}
+
+.furniture-panel__count {
+  background: var(--primary);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.125rem 0.5rem;
+  border-radius: 99px;
+}
+
+.furniture-panel__back {
+  margin-bottom: 0.5rem;
+}
+
+/* Furniture Categories */
+.furniture-panel__categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background: #f1f5f9;
+  border-radius: var(--radius-md);
+}
+
+.furniture-category {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.375rem 0.5rem;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-md);
+  font-size: 0.6rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  min-width: 44px;
+}
+
+.furniture-category:hover {
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text-main);
+}
+
+.furniture-category.active {
+  background: white;
+  color: var(--primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.furniture-category__icon {
+  font-size: 1rem;
+}
+
+.furniture-category__name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 48px;
+}
+
+/* Furniture Items Grid */
+.furniture-panel__items {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.furniture-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.75rem 0.5rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: white;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.furniture-item:hover {
+  border-color: var(--primary);
+  background: #eff6ff;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.furniture-item__icon {
+  font-size: 1.5rem;
+}
+
+.furniture-item__name {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-main);
+  text-align: center;
+}
+
+.furniture-item__size {
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+}
+
+/* Placed Furniture List */
+.furniture-panel__placed {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.furniture-panel__placed h5 {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.placed-furniture-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.placed-furniture-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: white;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.placed-furniture-item:hover {
+  border-color: var(--primary);
+  background: #fafbfc;
+}
+
+.placed-furniture-item.selected {
+  border-color: var(--primary);
+  background: #eff6ff;
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.placed-furniture-item__icon {
+  font-size: 1rem;
+}
+
+.placed-furniture-item__name {
+  flex: 1;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.placed-furniture-item__rotation {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  background: #f1f5f9;
+  padding: 0.125rem 0.375rem;
+  border-radius: 99px;
+}
+
+/* Furniture Editor */
+.furniture-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.furniture-editor__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.furniture-editor__icon {
+  font-size: 1.5rem;
+}
+
+.furniture-editor__name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.furniture-editor__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.furniture-editor__field label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  color: var(--text-secondary);
+}
+
+.furniture-editor__dimensions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.furniture-editor__rotation {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.furniture-editor__rotation .rotation-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-main);
+  min-width: 40px;
+}
+
+.furniture-editor__color {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.furniture-editor__color input[type="color"] {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  padding: 2px;
+}
+
+.furniture-editor__color span {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+
+.furniture-editor__position {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.furniture-editor__actions {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Furniture Panel Help */
+.furniture-panel__help {
+  padding: 0.75rem;
+  background: #f8fafc;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.furniture-panel__help p {
+  margin: 0 0 0.25rem 0;
+}
+
+.furniture-panel__help p:last-child {
+  margin-bottom: 0;
+}
+
+/* ============================================
+   Furniture SVG Rendering
+   ============================================ */
+
+.furniture-item-svg {
+  cursor: grab;
+  transition: filter 0.15s ease;
+}
+
+.furniture-item-svg:hover rect {
+  filter: brightness(1.05);
+}
+
+.furniture-item-svg.selected rect {
+  filter: brightness(1);
+}
+
+.furniture-item-svg.dragging {
+  cursor: grabbing;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+}
+
+.furniture-item-svg text {
+  user-select: none;
+  pointer-events: none;
+}
+
+.furniture-item-svg.wall-mounted rect {
+  opacity: 0.7;
+}
+
+/* Furniture Editor Badge */
+.furniture-editor__badge {
+  font-size: 0.65rem;
+  background: #9333ea;
+  color: white;
+  padding: 0.125rem 0.5rem;
+  border-radius: 99px;
+  font-weight: 500;
+  margin-left: auto;
+}
+
+.furniture-editor__hint {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+/* Wall-mounted furniture item in catalog */
+.furniture-item--wall-mounted {
+  border-style: dashed;
+  border-color: #9333ea;
+}
+
+.furniture-item--wall-mounted:hover {
+  border-color: #7c3aed;
+  background: #f5f3ff;
+}

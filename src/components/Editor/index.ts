@@ -6,3 +6,4 @@ export { ConfigPanel } from './ConfigPanel';
 export { StatsPanel } from './StatsPanel';
 export { MaterialsPanel } from './MaterialsPanel';
 export { ProjectsPanel } from './ProjectsPanel';
+export { FurniturePanel } from './FurniturePanel';

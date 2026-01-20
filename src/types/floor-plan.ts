@@ -61,6 +61,96 @@ export type OpeningType = 'door' | 'window';
 
 export type ElementType = 'pillar' | 'stair' | 'counter' | 'fixture';
 
+// ============================================
+// Furniture Types
+// ============================================
+
+export type FurnitureCategory = 
+  | 'living'      // Sala de estar
+  | 'dining'      // Sala de jantar
+  | 'bedroom'     // Quarto
+  | 'kitchen'     // Cozinha
+  | 'bathroom'    // Banheiro
+  | 'office'      // Escritório
+  | 'outdoor'     // Área externa
+  | 'structural'; // Estrutural (escadas, piscinas, etc.)
+
+export type StructuralType = 'stair' | 'pool' | 'pillar' | 'fireplace' | 'ramp' | 'deck' | 'none';
+
+export interface FurnitureTemplate {
+  /** Unique identifier for the template */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Category */
+  category: FurnitureCategory;
+  /** Icon/emoji for display */
+  icon: string;
+  /** Default width in cm */
+  width: number;
+  /** Default depth in cm */
+  depth: number;
+  /** Default height in cm */
+  height: number;
+  /** Color for 2D/3D rendering */
+  color: string;
+  /** Minimum width (for resizing) */
+  minWidth?: number;
+  /** Maximum width (for resizing) */
+  maxWidth?: number;
+  /** Minimum depth (for resizing) */
+  minDepth?: number;
+  /** Maximum depth (for resizing) */
+  maxDepth?: number;
+  /** Whether the furniture can be resized */
+  resizable?: boolean;
+  /** Height from floor in cm (for wall-mounted items like cabinets) */
+  elevation?: number;
+  /** Whether this is a wall-mounted item */
+  wallMounted?: boolean;
+  /** Structural element type (for special rendering) */
+  structuralType?: StructuralType;
+  /** For pools: water depth in cm */
+  waterDepth?: number;
+  /** For pools: border width in cm */
+  borderWidth?: number;
+  /** For stairs: number of steps */
+  steps?: number;
+  /** Secondary color (for patterns, steps, etc.) */
+  secondaryColor?: string;
+}
+
+export interface Furniture {
+  /** Unique instance ID */
+  id: string;
+  /** Template ID this furniture is based on */
+  templateId: string;
+  /** Display name (can override template) */
+  name?: string;
+  /** Position (top-left corner) */
+  position: Position;
+  /** Custom width (overrides template) */
+  width?: number;
+  /** Custom depth (overrides template) */
+  depth?: number;
+  /** Custom height (overrides template) */
+  height?: number;
+  /** Rotation in degrees (0, 90, 180, 270) */
+  rotation: number;
+  /** Custom color (overrides template) */
+  color?: string;
+  /** Room this furniture belongs to (optional) */
+  roomId?: string;
+  /** Z-index for layering */
+  zIndex?: number;
+  /** Custom elevation from floor (overrides template) */
+  elevation?: number;
+  /** Custom border width for pools (overrides template) */
+  borderWidth?: number;
+  /** Custom water depth for pools (overrides template) */
+  waterDepth?: number;
+}
+
 export type StairDirection = 'up-north' | 'up-south' | 'up-east' | 'up-west';
 
 export interface Position {
@@ -138,6 +228,8 @@ export interface Floor {
   rooms: Room[];
   /** Additional structural elements */
   elements?: Element[];
+  /** Furniture items on this floor */
+  furniture?: Furniture[];
 }
 
 export interface WallDefaults {
