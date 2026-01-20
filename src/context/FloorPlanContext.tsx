@@ -378,6 +378,8 @@ interface FloorPlanContextValue {
   // Import/Export
   importFloorPlan: (floorPlan: FloorPlan) => void;
   exportFloorPlan: () => FloorPlan;
+  // State management
+  markClean: () => void;
   // Helpers
   getSelectedRoom: () => Room | null;
   getSelectedFurniture: () => Furniture | null;
@@ -490,6 +492,10 @@ export function FloorPlanProvider({ children, initialFloorPlan }: FloorPlanProvi
     return state.floorPlan;
   }, [state.floorPlan]);
 
+  const markClean = useCallback(() => {
+    dispatch({ type: 'MARK_CLEAN' });
+  }, []);
+
   const getSelectedRoom = useCallback(() => {
     if (!state.selectedRoomId) return null;
     return state.floorPlan.floor.rooms.find((r) => r.id === state.selectedRoomId) ?? null;
@@ -544,6 +550,7 @@ export function FloorPlanProvider({ children, initialFloorPlan }: FloorPlanProvi
     rotateFurniture,
     importFloorPlan,
     exportFloorPlan,
+    markClean,
     getSelectedRoom,
     getSelectedFurniture,
     generateRoomId,

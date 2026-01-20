@@ -26,7 +26,7 @@ import {
 import { createEmptyFloorPlan } from '../../context/FloorPlanContext';
 
 export function ProjectsPanel() {
-  const { state, importFloorPlan, exportFloorPlan } = useFloorPlan();
+  const { state, importFloorPlan, exportFloorPlan, markClean } = useFloorPlan();
   const [projects, setProjects] = useState<ProjectMetadata[]>([]);
   const [currentProjectId, setCurrentId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -61,6 +61,7 @@ export function ProjectsPanel() {
     // Set new timer
     autoSaveTimerRef.current = setTimeout(() => {
       autoSaveProject(exportFloorPlan());
+      markClean();
       setLastAutoSave(new Date());
       refreshProjects();
     }, settings.autoSaveInterval * 1000);
@@ -125,6 +126,7 @@ export function ProjectsPanel() {
       setCurrentId(project.id);
     }
     
+    markClean();
     refreshProjects();
   };
 
@@ -134,6 +136,7 @@ export function ProjectsPanel() {
     
     const project = saveProject(exportFloorPlan(), name);
     setCurrentId(project.id);
+    markClean();
     refreshProjects();
   };
 

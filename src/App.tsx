@@ -1,12 +1,61 @@
-import { useState, useCallback, Suspense } from 'react';
+import { useState, useCallback, Suspense, useEffect } from 'react';
 import { FloorPlanProvider, useFloorPlan } from './context/FloorPlanContext';
 import { FloorPlanViewer, FloorPlan3D, EditorPanel, StatsPanel } from './components';
 import type { ValidationIssue } from './utils/validation';
+import {
+  getAllProjects,
+  getCurrentProjectId,
+  setCurrentProjectId,
+  getProject,
+  saveProject,
+  createVersion,
+} from './services/storage';
 import casaExemplo from '../examples/casa-exemplo.json';
 import type { FloorPlan } from './types/floor-plan';
 import './App.css';
 
+/**
+ * Get initial floor plan from localStorage or default example
+ * - If 1 project saved: load it
+ * - If multiple projects: load last edited
+ * - If no projects: load example
+ */
+function getInitialFloorPlan(): { floorPlan: FloorPlan; projectId: string | null } {
+  const projects = getAllProjects();
+  
+  if (projects.length === 0) {
+    // No saved projects, use example
+    return { floorPlan: casaExemplo as FloorPlan, projectId: null };
+  }
+  
+  if (projects.length === 1) {
+    // Single project, load it
+    setCurrentProjectId(projects[0].id);
+    return { floorPlan: projects[0].floorPlan, projectId: projects[0].id };
+  }
+  
+  // Multiple projects - check if there's a current one
+  const currentId = getCurrentProjectId();
+  if (currentId) {
+    const currentProject = getProject(currentId);
+    if (currentProject) {
+      return { floorPlan: currentProject.floorPlan, projectId: currentId };
+    }
+  }
+  
+  // Load most recently updated project
+  const sortedProjects = [...projects].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
+  const mostRecent = sortedProjects[0];
+  setCurrentProjectId(mostRecent.id);
+  return { floorPlan: mostRecent.floorPlan, projectId: mostRecent.id };
+}
+
 type MainView = 'floorplan' | '3d' | 'costs';
+
+// Initialize with stored project info
+const initialData = getInitialFloorPlan();
 
 function FloorPlanApp() {
   const { 
@@ -16,11 +65,16 @@ function FloorPlanApp() {
     selectFurniture,
     moveFurniture,
     rotateFurniture,
+    exportFloorPlan,
+    markClean,
   } = useFloorPlan();
-  const { floorPlan, selectedRoomId, selectedFurnitureId } = state;
+  const { floorPlan, selectedRoomId, selectedFurnitureId, isDirty } = state;
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
   const [mainView, setMainView] = useState<MainView>('floorplan');
+  const [currentProjectId, setCurrentProjectIdState] = useState<string | null>(initialData.projectId);
+  const [isSaving, setIsSaving] = useState(false);
 
+  // Callbacks - defined before useEffects that depend on them
   const handleValidation = useCallback((issues: ValidationIssue[]) => {
     setValidationIssues(issues);
   }, []);
@@ -31,6 +85,55 @@ function FloorPlanApp() {
       setMainView('floorplan'); // Switch to floorplan to show the room
     }
   }, [selectRoom]);
+
+  const handleQuickSave = useCallback(() => {
+    setIsSaving(true);
+    const currentFloorPlan = exportFloorPlan();
+    const name = currentFloorPlan.name ?? 'Meu Projeto';
+    
+    if (currentProjectId) {
+      // Create version before saving
+      createVersion(currentProjectId, 'Salvamento rápido');
+      saveProject(currentFloorPlan, name, currentProjectId);
+    } else {
+      // First save - create new project
+      const project = saveProject(currentFloorPlan, name);
+      setCurrentProjectId(project.id);
+      setCurrentProjectIdState(project.id);
+    }
+    
+    markClean();
+    setIsSaving(false);
+  }, [currentProjectId, exportFloorPlan, markClean]);
+
+  // Sync currentProjectId with localStorage changes
+  useEffect(() => {
+    const checkProjectId = () => {
+      const storedId = getCurrentProjectId();
+      if (storedId !== currentProjectId) {
+        setCurrentProjectIdState(storedId);
+      }
+    };
+    
+    // Check periodically (for changes from ProjectsPanel)
+    const interval = setInterval(checkProjectId, 500);
+    return () => clearInterval(interval);
+  }, [currentProjectId]);
+
+  // Keyboard shortcut for save (Ctrl+S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (isDirty) {
+          handleQuickSave();
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isDirty, handleQuickSave]);
 
   const errorCount = validationIssues.filter(i => i.severity === 'error').length;
   const warningCount = validationIssues.filter(i => i.severity === 'warning').length;
@@ -45,20 +148,36 @@ function FloorPlanApp() {
             &bull; Escala: {floorPlan.scale}px/{floorPlan.unit}
           </p>
         </div>
-        {(errorCount > 0 || warningCount > 0) && (
-          <div className="app-header__status">
-            {errorCount > 0 && (
-              <span className="status-badge status-badge--error">
-                {errorCount} erro{errorCount > 1 ? 's' : ''}
+        <div className="app-header__status">
+          {/* Unsaved changes indicator */}
+          {isDirty && (
+            <div className="app-header__unsaved">
+              <span className="status-badge status-badge--unsaved">
+                ● Alterações não salvas
               </span>
-            )}
-            {warningCount > 0 && (
-              <span className="status-badge status-badge--warning">
-                {warningCount} aviso{warningCount > 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-        )}
+              <button 
+                className="app-header__save-btn"
+                onClick={handleQuickSave}
+                disabled={isSaving}
+                title="Salvar alterações (Ctrl+S)"
+              >
+                {isSaving ? '⏳' : '💾'} Salvar
+              </button>
+            </div>
+          )}
+          
+          {/* Validation errors/warnings */}
+          {errorCount > 0 && (
+            <span className="status-badge status-badge--error">
+              {errorCount} erro{errorCount > 1 ? 's' : ''}
+            </span>
+          )}
+          {warningCount > 0 && (
+            <span className="status-badge status-badge--warning">
+              {warningCount} aviso{warningCount > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
       </header>
 
       <main className="app-main">
@@ -135,7 +254,7 @@ function FloorPlanApp() {
 
 function App() {
   return (
-    <FloorPlanProvider initialFloorPlan={casaExemplo as FloorPlan}>
+    <FloorPlanProvider initialFloorPlan={initialData.floorPlan}>
       <FloorPlanApp />
     </FloorPlanProvider>
   );
