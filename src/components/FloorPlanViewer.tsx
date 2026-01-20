@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useRef, useState, useCallback } from 'react';
-import type { FloorPlan, Furniture, Position } from '../types/floor-plan';
-import { calculateFloorGeometry } from '../utils/floor-plan.utils';
+import type { FloorPlan, Furniture, Position, WallSide } from '../types/floor-plan';
+import { calculateFloorGeometry, type RoomGeometry } from '../utils/floor-plan.utils';
 import {
   validateFloorPlan,
   getOverlapAreas,
@@ -11,6 +11,132 @@ import { getFurnitureTemplate } from '../data/furniture-library';
 import { Room } from './Room';
 import { Compass } from './Compass';
 import { ZoomControls } from './ZoomControls';
+
+// Dimension line component for wall measurements
+interface DimensionLineProps {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  length: number; // Real length in cm
+  offset: number; // Distance from wall
+  side: WallSide;
+}
+
+function DimensionLine({ x1, y1, x2, y2, length, offset, side }: DimensionLineProps) {
+  const isHorizontal = side === 'north' || side === 'south';
+  
+  // Calculate offset position for dimension line
+  let dx1 = x1, dy1 = y1, dx2 = x2, dy2 = y2;
+  let textX: number, textY: number;
+  let textRotation = 0;
+  
+  if (isHorizontal) {
+    const offsetY = side === 'north' ? -offset : offset;
+    dy1 = y1 + offsetY;
+    dy2 = y2 + offsetY;
+    textX = (dx1 + dx2) / 2;
+    textY = dy1 + (side === 'north' ? -6 : 10);
+  } else {
+    const offsetX = side === 'west' ? -offset : offset;
+    dx1 = x1 + offsetX;
+    dx2 = x2 + offsetX;
+    textX = dx1 + (side === 'west' ? -6 : 10);
+    textY = (dy1 + dy2) / 2;
+    textRotation = -90;
+  }
+  
+  // Format the measurement
+  const formatMeasurement = (cm: number): string => {
+    if (cm >= 100) {
+      const meters = cm / 100;
+      return `${meters.toFixed(2)}m`;
+    }
+    return `${Math.round(cm)}cm`;
+  };
+  
+  return (
+    <g className="dimension-line">
+      {/* Main dimension line */}
+      <line
+        x1={dx1}
+        y1={dy1}
+        x2={dx2}
+        y2={dy2}
+        stroke="#64748b"
+        strokeWidth={0.5}
+        markerStart="url(#dimension-tick)"
+        markerEnd="url(#dimension-tick)"
+      />
+      
+      {/* Extension lines */}
+      {isHorizontal ? (
+        <>
+          <line x1={x1} y1={y1} x2={dx1} y2={dy1} stroke="#94a3b8" strokeWidth={0.3} />
+          <line x1={x2} y1={y2} x2={dx2} y2={dy2} stroke="#94a3b8" strokeWidth={0.3} />
+        </>
+      ) : (
+        <>
+          <line x1={x1} y1={y1} x2={dx1} y2={dy1} stroke="#94a3b8" strokeWidth={0.3} />
+          <line x1={x2} y1={y2} x2={dx2} y2={dy2} stroke="#94a3b8" strokeWidth={0.3} />
+        </>
+      )}
+      
+      {/* Measurement text */}
+      <text
+        x={textX}
+        y={textY}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize={7}
+        fill="#475569"
+        fontWeight={500}
+        transform={textRotation !== 0 ? `rotate(${textRotation} ${textX} ${textY})` : undefined}
+        style={{ userSelect: 'none' }}
+      >
+        {formatMeasurement(length)}
+      </text>
+    </g>
+  );
+}
+
+// Component to render all dimensions for a room
+interface RoomDimensionsProps {
+  room: RoomGeometry;
+  scale: number;
+  offset?: number;
+}
+
+function RoomDimensions({ room, scale, offset = 15 }: RoomDimensionsProps) {
+  const walls = room.walls;
+  const dimensions: React.ReactNode[] = [];
+  
+  // Only show dimensions for walls that exist
+  const wallSides: WallSide[] = ['north', 'south', 'east', 'west'];
+  
+  wallSides.forEach((side) => {
+    const wall = walls[side];
+    if (!wall.exists || wall.length === 0) return;
+    
+    // Calculate real length (reverse the scale)
+    const realLength = wall.length / scale;
+    
+    dimensions.push(
+      <DimensionLine
+        key={`${room.id}-${side}`}
+        x1={wall.x1}
+        y1={wall.y1}
+        x2={wall.x2}
+        y2={wall.y2}
+        length={realLength}
+        offset={offset}
+        side={side}
+      />
+    );
+  });
+  
+  return <g className="room-dimensions">{dimensions}</g>;
+}
 
 interface FloorPlanViewerProps {
   floorPlan: FloorPlan;
@@ -57,6 +183,9 @@ export function FloorPlanViewer({
   const [draggingFurnitureId, setDraggingFurnitureId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const clickedOnFurniture = useRef(false);
+  
+  // Dimensions toggle
+  const [showDimensions, setShowDimensions] = useState(false);
 
   const geometry = useMemo(
     () => calculateFloorGeometry(floorPlan),
@@ -337,6 +466,17 @@ export function FloorPlanViewer({
             <rect width="20" height="4" fill="#a16207" />
             <line x1="0" y1="2" x2="20" y2="2" stroke="#854d0e" strokeWidth="0.5" />
           </pattern>
+          {/* Dimension line tick marker */}
+          <marker
+            id="dimension-tick"
+            markerWidth="6"
+            markerHeight="6"
+            refX="3"
+            refY="3"
+            orient="auto"
+          >
+            <line x1="3" y1="0" x2="3" y2="6" stroke="#64748b" strokeWidth="0.5" />
+          </marker>
         </defs>
 
         {/* Background grid - large area to cover pan */}
@@ -375,6 +515,20 @@ export function FloorPlanViewer({
             />
           ))}
         </g>
+
+        {/* Wall Dimensions */}
+        {showDimensions && (
+          <g className="floor-plan-dimensions">
+            {geometry.rooms.map((room) => (
+              <RoomDimensions
+                key={`dim-${room.id}`}
+                room={room}
+                scale={scale}
+                offset={18}
+              />
+            ))}
+          </g>
+        )}
 
         {/* Furniture */}
         <g className="floor-plan-furniture">
@@ -613,6 +767,19 @@ export function FloorPlanViewer({
           <Compass size={48} />
         </div>
       )}
+
+      {/* Dimensions Toggle */}
+      <div className="dimensions-toggle">
+        <label className="dimensions-toggle__label">
+          <input
+            type="checkbox"
+            checked={showDimensions}
+            onChange={(e) => setShowDimensions(e.target.checked)}
+          />
+          <span className="dimensions-toggle__icon">📏</span>
+          Cotas
+        </label>
+      </div>
     </div>
   );
 }
