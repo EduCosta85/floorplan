@@ -186,6 +186,13 @@ export function FloorPlanViewer({
   
   // Dimensions toggle
   const [showDimensions, setShowDimensions] = useState(false);
+  
+  // Measurement tool state
+  const [measureMode, setMeasureMode] = useState(false);
+  const [measurePoints, setMeasurePoints] = useState<{ start: Position | null; end: Position | null }>({
+    start: null,
+    end: null,
+  });
 
   const geometry = useMemo(
     () => calculateFloorGeometry(floorPlan),
@@ -371,7 +378,54 @@ export function FloorPlanViewer({
       return;
     }
     if (e.altKey || isPanning) return;
+    
+    // Measurement mode - capture points
+    if (measureMode) {
+      const svgPos = screenToSvg(e.clientX, e.clientY);
+      
+      if (!measurePoints.start) {
+        // First click - set start point
+        setMeasurePoints({ start: svgPos, end: null });
+      } else if (!measurePoints.end) {
+        // Second click - set end point
+        setMeasurePoints(prev => ({ ...prev, end: svgPos }));
+      } else {
+        // Third click - reset and start new measurement
+        setMeasurePoints({ start: svgPos, end: null });
+      }
+      return;
+    }
+    
     onBackgroundClick?.();
+  };
+  
+  // Clear measurement when exiting measure mode
+  const toggleMeasureMode = useCallback(() => {
+    setMeasureMode(prev => {
+      if (prev) {
+        // Exiting measure mode - clear points
+        setMeasurePoints({ start: null, end: null });
+      }
+      return !prev;
+    });
+  }, []);
+  
+  // Calculate measurement distance
+  const measurementDistance = useMemo(() => {
+    if (!measurePoints.start || !measurePoints.end) return null;
+    const dx = measurePoints.end.x - measurePoints.start.x;
+    const dy = measurePoints.end.y - measurePoints.start.y;
+    const distanceInPixels = Math.sqrt(dx * dx + dy * dy);
+    // Convert from SVG units back to real units (cm)
+    return distanceInPixels / scale;
+  }, [measurePoints, scale]);
+  
+  // Format measurement
+  const formatMeasure = (cm: number): string => {
+    if (cm >= 100) {
+      return `${(cm / 100).toFixed(2)}m`;
+    }
+    return `${Math.round(cm)}cm`;
   };
 
   // Calculate viewBox based on zoom and pan
@@ -759,6 +813,94 @@ export function FloorPlanViewer({
             </text>
           </g>
         )}
+
+        {/* Measurement tool visualization */}
+        {measureMode && (
+          <g className="measurement-tool">
+            {/* Start point marker */}
+            {measurePoints.start && (
+              <g>
+                <circle
+                  cx={measurePoints.start.x}
+                  cy={measurePoints.start.y}
+                  r={4 / zoom}
+                  fill="#ef4444"
+                  stroke="#fff"
+                  strokeWidth={1 / zoom}
+                />
+                <circle
+                  cx={measurePoints.start.x}
+                  cy={measurePoints.start.y}
+                  r={8 / zoom}
+                  fill="none"
+                  stroke="#ef4444"
+                  strokeWidth={1 / zoom}
+                  strokeDasharray={`${3 / zoom} ${2 / zoom}`}
+                />
+              </g>
+            )}
+            
+            {/* End point marker and measurement line */}
+            {measurePoints.start && measurePoints.end && (
+              <g>
+                {/* Measurement line */}
+                <line
+                  x1={measurePoints.start.x}
+                  y1={measurePoints.start.y}
+                  x2={measurePoints.end.x}
+                  y2={measurePoints.end.y}
+                  stroke="#ef4444"
+                  strokeWidth={2 / zoom}
+                  strokeDasharray={`${6 / zoom} ${3 / zoom}`}
+                />
+                
+                {/* End point marker */}
+                <circle
+                  cx={measurePoints.end.x}
+                  cy={measurePoints.end.y}
+                  r={4 / zoom}
+                  fill="#ef4444"
+                  stroke="#fff"
+                  strokeWidth={1 / zoom}
+                />
+                <circle
+                  cx={measurePoints.end.x}
+                  cy={measurePoints.end.y}
+                  r={8 / zoom}
+                  fill="none"
+                  stroke="#ef4444"
+                  strokeWidth={1 / zoom}
+                  strokeDasharray={`${3 / zoom} ${2 / zoom}`}
+                />
+                
+                {/* Distance label */}
+                {measurementDistance !== null && (
+                  <g transform={`translate(${(measurePoints.start.x + measurePoints.end.x) / 2}, ${(measurePoints.start.y + measurePoints.end.y) / 2})`}>
+                    <rect
+                      x={-30 / zoom}
+                      y={-12 / zoom}
+                      width={60 / zoom}
+                      height={20 / zoom}
+                      rx={4 / zoom}
+                      fill="#ef4444"
+                    />
+                    <text
+                      x={0}
+                      y={4 / zoom}
+                      textAnchor="middle"
+                      fontSize={11 / zoom}
+                      fontWeight="bold"
+                      fill="white"
+                      style={{ userSelect: 'none' }}
+                    >
+                      {formatMeasure(measurementDistance)}
+                    </text>
+                  </g>
+                )}
+              </g>
+            )}
+          </g>
+        )}
       </svg>
 
       {/* Compass Overlay */}
@@ -768,18 +910,44 @@ export function FloorPlanViewer({
         </div>
       )}
 
-      {/* Dimensions Toggle */}
-      <div className="dimensions-toggle">
-        <label className="dimensions-toggle__label">
+      {/* Viewer Tools */}
+      <div className="viewer-tools">
+        {/* Dimensions Toggle */}
+        <label className="viewer-tools__toggle">
           <input
             type="checkbox"
             checked={showDimensions}
             onChange={(e) => setShowDimensions(e.target.checked)}
           />
-          <span className="dimensions-toggle__icon">📏</span>
+          <span className="viewer-tools__icon">📏</span>
           Cotas
         </label>
+        
+        {/* Measure Tool Toggle */}
+        <button
+          className={`viewer-tools__btn ${measureMode ? 'active' : ''}`}
+          onClick={toggleMeasureMode}
+          title="Medir distância entre dois pontos"
+        >
+          <span className="viewer-tools__icon">📐</span>
+          Medir
+        </button>
       </div>
+
+      {/* Measure Mode Instructions */}
+      {measureMode && (
+        <div className="measure-instructions">
+          {!measurePoints.start && (
+            <span>👆 Clique no primeiro ponto</span>
+          )}
+          {measurePoints.start && !measurePoints.end && (
+            <span>👆 Clique no segundo ponto</span>
+          )}
+          {measurePoints.start && measurePoints.end && measurementDistance !== null && (
+            <span>📐 Distância: <strong>{formatMeasure(measurementDistance)}</strong> — Clique para nova medição</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
