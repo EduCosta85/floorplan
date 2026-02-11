@@ -15,6 +15,10 @@ import type {
   Furniture,
   Position,
 } from '../types/floor-plan';
+import type { Snapshot } from '../components/SnapshotsGallery';
+
+// Snapshots storage key
+const SNAPSHOTS_STORAGE_KEY = 'floor-plan-snapshots';
 
 // Default empty floor plan
 const createEmptyFloorPlan = (): FloorPlan => ({
@@ -35,6 +39,25 @@ const createEmptyFloorPlan = (): FloorPlan => ({
   },
 });
 
+// Load snapshots from localStorage
+function loadSnapshots(): Snapshot[] {
+  try {
+    const stored = localStorage.getItem(SNAPSHOTS_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+// Save snapshots to localStorage
+function saveSnapshots(snapshots: Snapshot[]): void {
+  try {
+    localStorage.setItem(SNAPSHOTS_STORAGE_KEY, JSON.stringify(snapshots));
+  } catch (e) {
+    console.warn('Failed to save snapshots to localStorage:', e);
+  }
+}
+
 // State
 interface FloorPlanState {
   floorPlan: FloorPlan;
@@ -42,6 +65,7 @@ interface FloorPlanState {
   selectedWallSide: WallSide | null;
   selectedFurnitureId: string | null;
   isDirty: boolean;
+  snapshots: Snapshot[];
 }
 
 // Actions
@@ -63,7 +87,10 @@ type FloorPlanAction =
   | { type: 'UPDATE_FURNITURE'; payload: { id: string; furniture: Partial<Furniture> } }
   | { type: 'DELETE_FURNITURE'; payload: string }
   | { type: 'MOVE_FURNITURE'; payload: { id: string; position: Position } }
-  | { type: 'MARK_CLEAN' };
+  | { type: 'MARK_CLEAN' }
+  | { type: 'ADD_SNAPSHOT'; payload: Snapshot }
+  | { type: 'DELETE_SNAPSHOT'; payload: string }
+  | { type: 'RENAME_SNAPSHOT'; payload: { id: string; name: string } };
 
 // Reducer
 function floorPlanReducer(state: FloorPlanState, action: FloorPlanAction): FloorPlanState {
@@ -343,6 +370,26 @@ function floorPlanReducer(state: FloorPlanState, action: FloorPlanAction): Floor
     case 'MARK_CLEAN':
       return { ...state, isDirty: false };
 
+    case 'ADD_SNAPSHOT': {
+      const newSnapshots = [action.payload, ...state.snapshots];
+      saveSnapshots(newSnapshots);
+      return { ...state, snapshots: newSnapshots };
+    }
+
+    case 'DELETE_SNAPSHOT': {
+      const newSnapshots = state.snapshots.filter((s) => s.id !== action.payload);
+      saveSnapshots(newSnapshots);
+      return { ...state, snapshots: newSnapshots };
+    }
+
+    case 'RENAME_SNAPSHOT': {
+      const newSnapshots = state.snapshots.map((s) =>
+        s.id === action.payload.id ? { ...s, name: action.payload.name } : s
+      );
+      saveSnapshots(newSnapshots);
+      return { ...state, snapshots: newSnapshots };
+    }
+
     default:
       return state;
   }
@@ -380,6 +427,10 @@ interface FloorPlanContextValue {
   exportFloorPlan: () => FloorPlan;
   // State management
   markClean: () => void;
+  // Snapshot operations
+  addSnapshot: (snapshot: Snapshot) => void;
+  deleteSnapshot: (id: string) => void;
+  renameSnapshot: (id: string, name: string) => void;
   // Helpers
   getSelectedRoom: () => Room | null;
   getSelectedFurniture: () => Furniture | null;
@@ -402,6 +453,7 @@ export function FloorPlanProvider({ children, initialFloorPlan }: FloorPlanProvi
     selectedWallSide: null,
     selectedFurnitureId: null,
     isDirty: false,
+    snapshots: loadSnapshots(),
   });
 
   const selectRoom = useCallback((id: string | null) => {
@@ -496,6 +548,19 @@ export function FloorPlanProvider({ children, initialFloorPlan }: FloorPlanProvi
     dispatch({ type: 'MARK_CLEAN' });
   }, []);
 
+  // Snapshot operations
+  const addSnapshot = useCallback((snapshot: Snapshot) => {
+    dispatch({ type: 'ADD_SNAPSHOT', payload: snapshot });
+  }, []);
+
+  const deleteSnapshot = useCallback((id: string) => {
+    dispatch({ type: 'DELETE_SNAPSHOT', payload: id });
+  }, []);
+
+  const renameSnapshot = useCallback((id: string, name: string) => {
+    dispatch({ type: 'RENAME_SNAPSHOT', payload: { id, name } });
+  }, []);
+
   const getSelectedRoom = useCallback(() => {
     if (!state.selectedRoomId) return null;
     return state.floorPlan.floor.rooms.find((r) => r.id === state.selectedRoomId) ?? null;
@@ -551,6 +616,9 @@ export function FloorPlanProvider({ children, initialFloorPlan }: FloorPlanProvi
     importFloorPlan,
     exportFloorPlan,
     markClean,
+    addSnapshot,
+    deleteSnapshot,
+    renameSnapshot,
     getSelectedRoom,
     getSelectedFurniture,
     generateRoomId,

@@ -11,9 +11,10 @@ import { ValidationWarnings } from '../ValidationWarnings';
 import { MaterialsPanel } from './MaterialsPanel';
 import { ProjectsPanel } from './ProjectsPanel';
 import { FurniturePanel } from './FurniturePanel';
+import { ChatPanel } from '../Chat';
 import type { RoomMaterials } from '../../types/floor-plan';
 
-type Tab = 'projects' | 'room' | 'furniture' | 'alerts' | 'config';
+type Tab = 'projects' | 'room' | 'furniture' | 'chat' | 'alerts' | 'config';
 
 const WALL_SIDES: WallSide[] = ['north', 'east', 'south', 'west'];
 const SIDE_LABELS: Record<WallSide, string> = {
@@ -89,6 +90,12 @@ export function EditorPanel({ validationIssues = [], onIssueClick }: EditorPanel
           onClick={() => setActiveTab('furniture')}
         >
           🪑 Móveis
+        </button>
+        <button
+          className={`editor-panel__tab ${activeTab === 'chat' ? 'active' : ''}`}
+          onClick={() => setActiveTab('chat')}
+        >
+          🤖 AI
         </button>
         <button
           className={`editor-panel__tab ${activeTab === 'alerts' ? 'active' : ''}`}
@@ -217,6 +224,8 @@ export function EditorPanel({ validationIssues = [], onIssueClick }: EditorPanel
         {activeTab === 'projects' && <ProjectsPanel />}
 
         {activeTab === 'furniture' && <FurniturePanel />}
+
+        {activeTab === 'chat' && <ChatPanel />}
 
         {activeTab === 'alerts' && (
           <ValidationWarnings

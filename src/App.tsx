@@ -1,6 +1,8 @@
 import { useState, useCallback, Suspense, useEffect } from 'react';
 import { FloorPlanProvider, useFloorPlan } from './context/FloorPlanContext';
 import { FloorPlanViewer, FloorPlan3D, EditorPanel, StatsPanel } from './components';
+import { SnapshotsGallery } from './components/SnapshotsGallery';
+import type { Snapshot } from './components/SnapshotsGallery';
 import type { ValidationIssue } from './utils/validation';
 import {
   getAllProjects,
@@ -52,7 +54,7 @@ function getInitialFloorPlan(): { floorPlan: FloorPlan; projectId: string | null
   return { floorPlan: mostRecent.floorPlan, projectId: mostRecent.id };
 }
 
-type MainView = 'floorplan' | '3d' | 'costs';
+type MainView = 'floorplan' | '3d' | 'costs' | 'snapshots';
 
 // Initialize with stored project info
 const initialData = getInitialFloorPlan();
@@ -67,8 +69,11 @@ function FloorPlanApp() {
     rotateFurniture,
     exportFloorPlan,
     markClean,
+    addSnapshot,
+    deleteSnapshot,
+    renameSnapshot,
   } = useFloorPlan();
-  const { floorPlan, selectedRoomId, selectedFurnitureId, isDirty } = state;
+  const { floorPlan, selectedRoomId, selectedFurnitureId, isDirty, snapshots } = state;
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
   const [mainView, setMainView] = useState<MainView>('floorplan');
   const [currentProjectId, setCurrentProjectIdState] = useState<string | null>(initialData.projectId);
@@ -105,6 +110,18 @@ function FloorPlanApp() {
     markClean();
     setIsSaving(false);
   }, [currentProjectId, exportFloorPlan, markClean]);
+
+  const handleCapture = useCallback((imageData: string, viewMode: 'orbit' | 'firstPerson', cameraHeight: number) => {
+    const snapshot: Snapshot = {
+      id: `snapshot-${Date.now()}`,
+      name: `Foto ${snapshots.length + 1}`,
+      imageData,
+      createdAt: new Date().toISOString(),
+      viewMode,
+      cameraHeight,
+    };
+    addSnapshot(snapshot);
+  }, [addSnapshot, snapshots.length]);
 
   // Sync currentProjectId with localStorage changes
   useEffect(() => {
@@ -204,6 +221,16 @@ function FloorPlanApp() {
             <span className="main-tabs__icon">$</span>
             Custos
           </button>
+          <button
+            className={`main-tabs__tab ${mainView === 'snapshots' ? 'active' : ''}`}
+            onClick={() => setMainView('snapshots')}
+          >
+            <span className="main-tabs__icon">📷</span>
+            Fotos
+            {snapshots.length > 0 && (
+              <span className="main-tabs__badge">{snapshots.length}</span>
+            )}
+          </button>
         </div>
 
         {/* Main Area Content */}
@@ -231,12 +258,22 @@ function FloorPlanApp() {
                 floorPlan={floorPlan}
                 selectedRoomId={selectedRoomId}
                 onRoomClick={selectRoom}
+                onCapture={handleCapture}
               />
             </Suspense>
           )}
           {mainView === 'costs' && (
             <div className="main-content__stats">
               <StatsPanel floorPlan={floorPlan} />
+            </div>
+          )}
+          {mainView === 'snapshots' && (
+            <div className="main-content__snapshots">
+              <SnapshotsGallery
+                snapshots={snapshots}
+                onDelete={deleteSnapshot}
+                onRename={renameSnapshot}
+              />
             </div>
           )}
         </div>

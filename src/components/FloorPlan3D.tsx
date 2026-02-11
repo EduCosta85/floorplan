@@ -21,6 +21,7 @@ interface FloorPlan3DProps {
   floorPlan: FloorPlan;
   selectedRoomId?: string | null;
   onRoomClick?: (roomId: string) => void;
+  onCapture?: (imageData: string, viewMode: 'orbit' | 'firstPerson', cameraHeight: number) => void;
 }
 
 // View modes
@@ -926,13 +927,14 @@ function Scene({
   );
 }
 
-export function FloorPlan3D({ floorPlan, selectedRoomId, onRoomClick }: FloorPlan3DProps) {
+export function FloorPlan3D({ floorPlan, selectedRoomId, onRoomClick, onCapture }: FloorPlan3DProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('orbit');
   const [qualityMode, setQualityMode] = useState<QualityMode>('medium');
   const [cameraHeight, setCameraHeight] = useState(170);
   const [hoveredRoomId, setHoveredRoomId] = useState<string | null>(null);
   const [showLabels, setShowLabels] = useState(true);
   const [showCeiling, setShowCeiling] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
   
   const handleEnterFirstPerson = useCallback(() => {
@@ -944,6 +946,25 @@ export function FloorPlan3D({ floorPlan, selectedRoomId, onRoomClick }: FloorPla
     setViewMode('orbit');
     document.exitPointerLock();
   }, []);
+
+  const handleCapture = useCallback(() => {
+    const canvas = canvasRef.current?.querySelector('canvas');
+    if (!canvas || !onCapture) return;
+
+    setIsCapturing(true);
+    
+    // Small delay to ensure render is complete
+    requestAnimationFrame(() => {
+      try {
+        const imageData = canvas.toDataURL('image/png');
+        onCapture(imageData, viewMode, cameraHeight);
+      } catch (e) {
+        console.error('Failed to capture screenshot:', e);
+      } finally {
+        setIsCapturing(false);
+      }
+    });
+  }, [onCapture, viewMode, cameraHeight]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -963,6 +984,7 @@ export function FloorPlan3D({ floorPlan, selectedRoomId, onRoomClick }: FloorPla
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.0,
+          preserveDrawingBuffer: true, // Required for screenshot capture
         }}
         style={{ background: 'linear-gradient(to bottom, #87CEEB 0%, #E0E7EE 100%)' }}
       >
@@ -1075,6 +1097,20 @@ export function FloorPlan3D({ floorPlan, selectedRoomId, onRoomClick }: FloorPla
             Mostrar teto
           </label>
         </div>
+
+        {/* Capture Button */}
+        {onCapture && (
+          <div className="floor-plan-3d__control-group">
+            <button 
+              className={`floor-plan-3d__capture-btn ${isCapturing ? 'capturing' : ''}`}
+              onClick={handleCapture}
+              disabled={isCapturing}
+              title="Tirar foto da visualização atual"
+            >
+              {isCapturing ? '⏳ Capturando...' : '📷 Tirar Foto'}
+            </button>
+          </div>
+        )}
       </div>
       
       {/* Help Text */}

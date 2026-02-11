@@ -7,4 +7,5 @@ export { Compass } from './Compass';
 export { ZoomControls } from './ZoomControls';
 export { ValidationWarnings } from './ValidationWarnings';
 export { EditorPanel, StatsPanel } from './Editor';
+export { SnapshotsGallery } from './SnapshotsGallery';
 export * from './ui';
